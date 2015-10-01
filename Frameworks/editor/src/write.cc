@@ -19,7 +19,7 @@ namespace ng
 		for(auto const& range : ranges)
 			noSelection = noSelection && range.empty();
 
-		input::type actualUnit = unit == input::selection && noSelection ? fallbackUnit : unit;
+		input::type actualUnit = unit == input::selection && noSelection && (ranges.size() == 1 || fallbackUnit != input::entire_document) ? fallbackUnit : unit;
 		*inputWasSelection = actualUnit == input::selection;
 
 		ng::ranges_t res;
@@ -36,7 +36,7 @@ namespace ng
 			res.push_back(range);
 		}
 
-		if(res.size() != 1 && actualUnit != input::entire_document)
+		if(res.size() != 1)
 			res = sanitize(buffer, res);
 
 		if(res.size() != 1 || !res.last().empty())

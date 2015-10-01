@@ -533,20 +533,6 @@ static bool is_binary (std::string const& path)
 - (void)setOpenURLs:(NSArray*)someURLs     { _outlineViewDelegate.openURLs = someURLs; }
 - (void)setModifiedURLs:(NSArray*)someURLs { _outlineViewDelegate.modifiedURLs = someURLs; }
 
-- (NSIndexSet*)indexSetforURLs:(NSSet*)urls
-{
-	// make a note of files in view, with changed state
-	NSMutableIndexSet* updateRows = [NSMutableIndexSet indexSet];
-	NSInteger len = [_outlineView numberOfRows];
-	for(NSInteger rowIndex = 0; rowIndex < len; ++rowIndex)
-	{
-		NSURL* file = [[_outlineView itemAtRow:rowIndex] url];
-		if([urls containsObject:file])
-			[updateRows addIndex:rowIndex];
-	}
-	return updateRows;
-}
-
 // ===============================
 // = Wrappers for selected items =
 // ===============================
@@ -1038,7 +1024,7 @@ static bool is_binary (std::string const& path)
 
 - (IBAction)didDoubleClickOutlineView:(id)sender
 {
-	[self openItems:_outlineView.clickedRow != -1 ? @[ [_outlineView itemAtRow:_outlineView.clickedRow] ] : self.selectedItems animate:YES];
+	[self openItems:self.selectedItems animate:YES];
 }
 
 - (void)openItems:(NSArray*)items animate:(BOOL)animateFlag
