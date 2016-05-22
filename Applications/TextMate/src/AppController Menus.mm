@@ -1,6 +1,7 @@
 #import "AppController.h"
 #import <oak/oak.h>
 #import <text/ctype.h>
+#import <text/parse.h>
 #import <bundles/bundles.h>
 #import <command/parser.h>
 #import <cf/cf.h>
@@ -14,6 +15,19 @@
 #import <BundleMenu/BundleMenu.h>
 
 OAK_DEBUG_VAR(AppController_Menus);
+
+static NSString* NameForLocaleIdentifier (NSString* languageCode)
+{
+	NSString* localLanguage = nil;
+	if(CFLocaleRef locale = CFLocaleCreate(kCFAllocatorDefault, (__bridge CFStringRef)languageCode))
+	{
+		localLanguage = [(NSString*)CFBridgingRelease(CFLocaleCopyDisplayNameForPropertyValue(locale, kCFLocaleIdentifier, (__bridge CFStringRef)languageCode)) capitalizedString];
+		CFRelease(locale);
+	}
+
+	NSString* systemLangauge = [(NSString*)CFBridgingRelease(CFLocaleCopyDisplayNameForPropertyValue(CFLocaleGetSystem(), kCFLocaleIdentifier, (__bridge CFStringRef)languageCode)) capitalizedString];
+	return localLanguage ?: systemLangauge ?: languageCode;
+}
 
 @implementation AppController (BundlesMenu)
 - (void)performBundleItemWithUUIDStringFrom:(id)anArgument
@@ -30,7 +44,7 @@ OAK_DEBUG_VAR(AppController_Menus);
 - (void)bundlesMenuNeedsUpdate:(NSMenu*)aMenu
 {
 	D(DBF_AppController_Menus, bug("\n"););
-	for(int i = aMenu.numberOfItems; i--; )
+	for(NSInteger i = aMenu.numberOfItems; i--; )
 	{
 		if([[aMenu itemAtIndex:i] isSeparatorItem])
 			break;
@@ -60,15 +74,24 @@ OAK_DEBUG_VAR(AppController_Menus);
 	D(DBF_AppController_Menus, bug("\n"););
 	[aMenu removeAllItems];
 
-	std::multimap<std::string, bundles::item_ptr, text::less_t> ordered;
+	std::map<std::string, std::multimap<std::string, bundles::item_ptr, text::less_t>> ordered;
 	for(auto const& item : bundles::query(bundles::kFieldAny, NULL_STR, scope::wildcard, bundles::kItemTypeTheme))
-		ordered.emplace(item->name(), item);
-
-	for(auto const& pair : ordered)
 	{
-		NSMenuItem* menuItem = [aMenu addItemWithTitle:[NSString stringWithCxxString:pair.first] action:@selector(takeThemeUUIDFrom:) keyEquivalent:@""];
-		[menuItem setKeyEquivalentCxxString:key_equivalent(pair.second)];
-		[menuItem setRepresentedObject:[NSString stringWithCxxString:pair.second->uuid()]];
+		auto semanticClass = text::split(item->value_for_field(bundles::kFieldSemanticClass), ".");
+		std::string themeClass = semanticClass.size() > 2 && semanticClass.front() == "theme" ? semanticClass[1] : "unspecified";
+		ordered[themeClass].emplace(item->name(), item);
+	}
+
+	for(auto const& themeClasses : ordered)
+	{
+		[aMenu addItemWithTitle:[[NSString stringWithCxxString:themeClasses.first] capitalizedString] action:@selector(nop:) keyEquivalent:@""];
+		for(auto const& pair : themeClasses.second)
+		{
+			NSMenuItem* menuItem = [aMenu addItemWithTitle:[NSString stringWithCxxString:pair.first] action:@selector(takeThemeUUIDFrom:) keyEquivalent:@""];
+			[menuItem setKeyEquivalentCxxString:key_equivalent(pair.second)];
+			[menuItem setRepresentedObject:[NSString stringWithCxxString:pair.second->uuid()]];
+			[menuItem setIndentationLevel:1];
+		}
 	}
 
 	if(ordered.empty())
@@ -79,7 +102,7 @@ OAK_DEBUG_VAR(AppController_Menus);
 {
 	D(DBF_AppController_Menus, bug("\n"););
 
-	for(int i = aMenu.numberOfItems; i--; )
+	for(NSInteger i = aMenu.numberOfItems; i--; )
 	{
 		NSMenuItem* item = [aMenu itemAtIndex:i];
 		if([item action] == @selector(takeSpellingLanguageFrom:))
@@ -90,12 +113,11 @@ OAK_DEBUG_VAR(AppController_Menus);
 
 	NSSpellChecker* spellChecker = [NSSpellChecker sharedSpellChecker];
 	for(NSString* lang in [spellChecker availableLanguages])
-	{
-		D(DBF_AppController_Menus, bug("%s\n", [lang UTF8String]););
-		NSString* str = (NSString*)CFBridgingRelease(CFLocaleCopyDisplayNameForPropertyValue(CFLocaleGetSystem(), kCFLocaleIdentifier, (__bridge CFStringRef)lang));
-		D(DBF_AppController_Menus, bug("→ %s\n", [(str ?: lang) UTF8String]););
-		ordered.emplace(to_s(str ?: lang), lang);
-	}
+		ordered.emplace(to_s(NameForLocaleIdentifier(lang)), lang);
+
+	NSString* systemSpellingLanguage = [spellChecker automaticallyIdentifiesLanguages] ? @"Automatic by Language" : NameForLocaleIdentifier([spellChecker language]);
+	NSMenuItem* menuItem = [aMenu addItemWithTitle:[NSString stringWithFormat:@"System (%@)", systemSpellingLanguage] action:@selector(takeSpellingLanguageFrom:) keyEquivalent:@""];
+	menuItem.representedObject = @"";
 
 	for(auto const& it : ordered)
 	{

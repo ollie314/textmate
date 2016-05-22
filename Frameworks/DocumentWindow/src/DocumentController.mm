@@ -220,7 +220,12 @@ namespace
 		std::transform(newDocuments.begin(), newDocuments.end(), inserter(uuids, uuids.end()), [](document::document_ptr const& doc){ return doc->identifier(); });
 
 		std::copy_if(oldDocuments.begin(), oldDocuments.begin() + splitAt, back_inserter(out), [&uuids](document::document_ptr const& doc){ return uuids.find(doc->identifier()) == uuids.end(); });
-		std::copy(newDocuments.begin(), newDocuments.end(), back_inserter(out));
+		uuids.clear();
+		for(auto const& doc : newDocuments)
+		{
+			if(uuids.insert(doc->identifier()).second)
+				out.push_back(doc);
+		}
 		std::copy_if(oldDocuments.begin() + splitAt, oldDocuments.end(), back_inserter(out), [&uuids](document::document_ptr const& doc){ return uuids.find(doc->identifier()) == uuids.end(); });
 
 		auto iter = std::find(out.begin(), out.end(), newDocuments.front());
@@ -1308,6 +1313,7 @@ namespace
 		{ "attr.project.maven",   "pom.xml",        "build"   },
 		{ "attr.project.scons",   "SConstruct",     "build"   },
 		{ "attr.project.lein",    "project.clj",    "build"   },
+		{ "attr.project.cargo",   "Cargo.toml",     "build"   },
 		{ "attr.project.vagrant", "Vagrantfile",    "vagrant" },
 		{ "attr.project.jekyll",  "_config.yml",    "jekyll"  },
 		{ "attr.test.rspec",      ".rspec",         "test"    },
@@ -2263,7 +2269,7 @@ namespace
 	int i = 0;
 	for(auto document : _documents)
 	{
-		NSMenuItem* item = [aMenu addItemWithTitle:[NSString stringWithCxxString:document->display_name()] action:@selector(takeSelectedTabIndexFrom:) keyEquivalent:i < 9 ? [NSString stringWithFormat:@"%c", '0' + ((i+1) % 10)] : @""];
+		NSMenuItem* item = [aMenu addItemWithTitle:[NSString stringWithCxxString:document->display_name()] action:@selector(takeSelectedTabIndexFrom:) keyEquivalent:i < 8 ? [NSString stringWithFormat:@"%c", '1' + i] : @""];
 		item.tag     = i;
 		item.toolTip = [[NSString stringWithCxxString:document->path()] stringByAbbreviatingWithTildeInPath];
 		item.image   = [OakFileIconImage fileIconImageWithPath:[NSString stringWithCxxString:document->path()] isModified:document->is_modified()];
@@ -2282,7 +2288,7 @@ namespace
 	{
 		[aMenu addItem:[NSMenuItem separatorItem]];
 
-		NSMenuItem* item = [aMenu addItemWithTitle:@"Last Tab" action:@selector(takeSelectedTabIndexFrom:) keyEquivalent:@"0"];
+		NSMenuItem* item = [aMenu addItemWithTitle:@"Last Tab" action:@selector(takeSelectedTabIndexFrom:) keyEquivalent:@"9"];
 		item.tag     = _documents.size()-1;
 		item.toolTip = [NSString stringWithCxxString:_documents.back()->display_name()];
 	}
@@ -2664,18 +2670,14 @@ static NSUInteger DisableSessionSavingCount = 0;
 	private:
 		static void bring_to_front (DocumentController* aController)
 		{
-			if([NSApp isHidden])
+			[aController showWindow:nil];
+			if(![NSApp isActive])
 			{
-				__weak __block id observerId = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidUnhideNotification object:NSApp queue:nil usingBlock:^(NSNotification*){
+				__weak __block id observerId = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidBecomeActiveNotification object:NSApp queue:nil usingBlock:^(NSNotification*){
+					// If our window is not on the active desktop but another one is, the system gives focus to the wrong window.
 					[aController showWindow:nil];
-					[NSApp activateIgnoringOtherApps:YES];
 					[[NSNotificationCenter defaultCenter] removeObserver:observerId];
 				}];
-				[NSApp unhideWithoutActivation];
-			}
-			else
-			{
-				[aController showWindow:nil];
 				[NSApp activateIgnoringOtherApps:YES];
 			}
 		}
@@ -2693,9 +2695,8 @@ static NSUInteger DisableSessionSavingCount = 0;
 				if(DocumentController* res = AllControllers()[[NSString stringWithCxxString:projectUUID]])
 					return res;
 
-				DocumentController* res = [DocumentController new];
-				res.identifier = [NSString stringWithCxxString:projectUUID];
-				return res;
+				if(projectUUID == "00000000-0000-0000-0000-000000000000")
+					return [DocumentController new];
 			}
 
 			// =========================================

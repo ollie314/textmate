@@ -210,6 +210,9 @@ struct tracking_t : fs::event_callback_t
 
 					FSFileItem* item;
 					auto it = existingItems.find(std::make_pair(fsItem.device, fsItem.inode));
+					if(it != existingItems.end() && fsItem.is_directory && ![it->second.url isEqual:url] && it->second.children)
+						it = existingItems.end();
+
 					if(it != existingItems.end())
 					{
 						item = it->second;
@@ -289,6 +292,7 @@ struct tracking_t : fs::event_callback_t
 						item.icon        = image;
 						item.leaf        = YES;
 						item.missing     = YES;
+						item.target      = nil;
 
 						[array addObject:item];
 					}

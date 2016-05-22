@@ -2,12 +2,40 @@ Title: Release Notes
 
 # Changes
 
+## 2016-04-19 (v2.0-beta.9.1)
+
+* You can now double click parentheses, braces etc. to select the contents. *[Brian T. Kelley]*
+* The Jump to Next/Previous Mark shortcuts have been changed to F3/⇧F3 so as to not conflict with some keyboard layouts.
+* See [all changes since v2.0-beta.9](https://github.com/textmate/textmate/compare/v2.0-beta.9...v2.0-beta.9.1)
+
+## 2016-03-05 (v2.0-beta.9)
+
+* The Themes sub-menu will group themes based on second element in their semantic class, if the first element is `theme`. The managed themes all indicate light and dark in their semantic class.
+* Added Jump to Next/Previous Mark menu items to the Navigate menu. This includes marks such as warnings and errors shown in the gutter (unlike next/previous bookmark which would not visit these marks) *[Ronald Wampler]*
+* The Spelling sub-menu now has an option to follow the spelling panel’s language selection (and will show the current value of the spelling panel). Using “Automatic by Language” currently require setting TextMate to follow the spelling panel’s value and then selecting this option in the spelling panel. *[Adam Strzelecki]*
+* Dictionary lookup could crash when used on an empty string. *[Vincent Bénony]*
+* See [all changes since v2.0-beta.8.4](https://github.com/textmate/textmate/compare/v2.0-beta.8.4...v2.0-beta.9)
+
+## 2015-12-06 (v2.0-beta.8.4)
+
+* TextMate now supports Force Click to look up words. This requires setting “Look up & data detectors” to “Force Click with one finger” in System Preferences → Trackpad.
+* Clicking the file browser with the mouse now always moves focus to the file browser. See [commit message](https://github.com/textmate/textmate/commit/78da1357fd2d9354546378e320b9e37cf8759fd1) for further explanation.
+* See [all changes since v2.0-beta.8.1](https://github.com/textmate/textmate/compare/v2.0-beta.8.1...v2.0-beta.8.4)
+
+## 2015-10-23 (v2.0-beta.8.1)
+
+* Add _View → Font → Default Size_ menu action bound to ⌘0 which works for both text and HTML output.. The _Last Tab_ action has been moved to ⌘9.
+* TextMate’s QuickLook plug-in can now show compiled AppleScript files.
+* New project scope for Cargo (Rust) projects (`attr.project.cargo`).
+* Miscellaneous fixes.
+* See [all changes since v2.0-beta.8](https://github.com/textmate/textmate/compare/v2.0-beta.8...v2.0-beta.8.1)
+
 ## 2015-09-16 (v2.0-beta.8)
 
 * You can now export a bundle (merging potential delta files) by right-clicking the bundle in the bundle editor and selecting _Export Bundle…_.
 * Improved support for multiple carets/selections and commands, for example fallback units are now respected when there are multiple carets (and none have a selection).
 * The file browser is now view-based (instead of cell-based). The main “feature” is that renaming an item should no longer be involuntarily aborted (when there are disk changes), though there are also some minor interaction changes and more animations plus labels are rendered closer to how Finder has shown them since 10.9.
-* You can now use ⌥⌘V in the file browser to “move” the item on the clipboard to the current folder. This makes it possibly to copy files from Finder and “move” to the location in TextMate’s file browser and thus the old way of moving files via keyboard (⌘X + ⌘V) is deprecated and will be removed.
+* You can now use ⌥⌘V in the file browser to “move” the item on the clipboard to the current folder. This makes it possible to copy files from Finder and “move” to the location in TextMate’s file browser and thus the old way of moving files via keyboard (⌘X + ⌘V) is deprecated and will be removed.
 * Double-tapping shift will now also leave “freehanded mode”.
 * Support spell checking being “automatic by language”. This is set via the spelling panel.
 * The line number scale factor can be set via the `lineNumberScaleFactor` user defaults key. It defaults to 0.8. If you want line numbers to be same size as main text, run the following in a terminal: `defaults write com.macromates.TextMate.preview lineNumberScaleFactor -float 1`.

@@ -160,6 +160,12 @@ namespace ng
 		_dirty_rects.push_back(OakRectMake(0, 0, width(), height()));
 	}
 
+	void layout_t::set_draw_indent_guides (bool drawIndentGuides)
+	{
+		_draw_indent_guides = drawIndentGuides;
+		_dirty_rects.push_back(OakRectMake(0, 0, width(), height()));
+	}
+
 	void layout_t::set_drop_marker (ng::index_t dropMarkerIndex)
 	{
 		if(dropMarkerIndex == _drop_marker)
@@ -250,14 +256,14 @@ namespace ng
 	// = Measurements =
 	// ================
 
-	CGRect layout_t::rect_at_index (ng::index_t const& index, bool bol_as_eol) const
+	CGRect layout_t::rect_at_index (ng::index_t const& index, bool bol_as_eol, bool wantsBaseline) const
 	{
 		ASSERT_LE(index.index, _buffer.size());
 
 		auto row = row_for_offset(index.index);
 		if(bol_as_eol && index.index == row->offset._length && row != _rows.begin())
 			--row;
-		return row->value.rect_at_index(index, *_metrics, _buffer, row->offset._length, CGPointMake(_margin.left, _margin.top + row->offset._height), bol_as_eol);
+		return row->value.rect_at_index(index, *_metrics, _buffer, row->offset._length, CGPointMake(_margin.left, _margin.top + row->offset._height), bol_as_eol, wantsBaseline);
 	}
 
 	CGRect layout_t::rect_for_range (size_t first, size_t last, bool bol_as_eol) const
@@ -758,6 +764,7 @@ namespace ng
 			CGColorRef marked_text_border     = nil;
 			CGColorRef margin_indicator       = nil;
 			CGColorRef drop_marker            = nil;
+			CGColorRef indent_guides          = nil;
 		};
 
 		base_colors_t const& get_base_colors (bool darkTheme)
@@ -771,12 +778,16 @@ namespace ng
 				dark.marked_text_border       = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
 				dark.margin_indicator         = CGColorCreateGenericGray(0.50, 0.50);
 				dark.drop_marker              = CGColorCreateGenericGray(0.50, 0.50);
+				// works for most darks, including very black backgrounds
+				dark.indent_guides            = CGColorCreateGenericGray(1.0, 0.06);
 
 				bright.marked_text_foreground = CGColorRetain(CGColorGetConstantColor(kCGColorBlack));
 				bright.marked_text_background = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
 				bright.marked_text_border     = CGColorRetain(CGColorGetConstantColor(kCGColorBlack));
 				bright.margin_indicator       = CGColorCreateGenericGray(0.25, 0.50);
 				bright.drop_marker            = CGColorCreateGenericGray(0.25, 0.50);
+				// works for most light schemes, including very white backgrounds
+				bright.indent_guides          = CGColorCreateGenericGray(0.0, 0.04);
 			});
 
 			return darkTheme ? dark : bright;
@@ -810,6 +821,16 @@ namespace ng
 		base_colors_t const& baseColors = get_base_colors(_theme->is_dark());
 		if(_draw_wrap_column)
 			render::fill_rect(context, baseColors.margin_indicator, OakRectMake(_margin.left + _metrics->column_width() * effective_wrap_column(), CGRectGetMinY(visibleRect), 1, CGRectGetHeight(visibleRect)));
+
+		if(_draw_indent_guides)
+		{
+			size_t x = _margin.left + _metrics->column_width() * _tab_size;
+			for(size_t i = 0; i < (_margin.left + _metrics->column_width() * effective_wrap_column()); i += _tab_size)
+			{
+				render::fill_rect(context, baseColors.indent_guides, OakRectMake(x, CGRectGetMinY(visibleRect), 1, CGRectGetHeight(visibleRect)));
+				x = _margin.left + _metrics->column_width() * i;
+			}
+		}
 
 		for(auto const& range : selection)
 		{

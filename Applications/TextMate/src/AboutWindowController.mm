@@ -271,9 +271,9 @@ static NSTextField* OakCreateTextField ()
 			{
 				dispatch_async(dispatch_get_main_queue(), ^{
 					[[AboutWindowController sharedInstance] showChangesWindow:self];
+					[[NSUserDefaults standardUserDefaults] setObject:currentDigest forKey:kUserDefaultsReleaseNotesDigestKey];
 				});
 			}
-			[[NSUserDefaults standardUserDefaults] setObject:currentDigest forKey:kUserDefaultsReleaseNotesDigestKey];
 		}
 	});
 }
@@ -375,7 +375,7 @@ static NSTextField* OakCreateTextField ()
 
 - (void)selectPageAtRelativeOffset:(NSInteger)offset
 {
-	NSArray* allPages = [self toolbarSelectableItemIdentifiers:nil];
+	NSArray* allPages = [self toolbarSelectableItemIdentifiers:self.toolbar];
 	NSUInteger index = [allPages indexOfObject:self.selectedPage];
 	if(index != NSNotFound)
 		self.selectedPage = allPages[(index + allPages.count + offset) % allPages.count];

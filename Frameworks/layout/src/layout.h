@@ -56,10 +56,12 @@ namespace ng
 		void set_is_key (bool isKey);
 		void set_draw_caret (bool drawCaret);
 		void set_draw_wrap_column (bool drawWrapColumn);
+		void set_draw_indent_guides (bool drawIndentGuides);
 		void set_drop_marker (ng::index_t dropMarkerIndex);
 		void set_viewport_size (CGSize size);
 
 		bool draw_wrap_column () const          { return _draw_wrap_column; }
+		bool draw_indent_guides() const         { return _draw_indent_guides; }
 		bool scroll_past_end () const           { return _scroll_past_end; }
 
 		// ======================
@@ -67,7 +69,7 @@ namespace ng
 		void update_metrics (CGRect visibleRect);
 		void draw (ng::context_t const& context, CGRect rectangle, bool isFlipped, ng::ranges_t const& selection, ng::ranges_t const& highlightRanges = ng::ranges_t(), bool drawBackground = true);
 		ng::index_t index_at_point (CGPoint point) const;
-		CGRect rect_at_index (ng::index_t const& index, bool bol_as_eol = false) const;
+		CGRect rect_at_index (ng::index_t const& index, bool bol_as_eol = false, bool wantsBaseline = false) const;
 		CGRect rect_for_range (size_t first, size_t last, bool bol_as_eol = false) const;
 		std::vector<CGRect> rects_for_ranges (ng::ranges_t const& ranges, kRectsIncludeMode mode = kRectsIncludeAll) const;
 
@@ -176,6 +178,7 @@ namespace ng
 		bool               _wrapping;
 		bool               _scroll_past_end;
 		bool               _draw_wrap_column = false;
+		bool               _draw_indent_guides = false;
 		size_t             _wrap_column;
 		margin_t           _margin;
 		CGSize             _viewport_size = CGSizeZero;

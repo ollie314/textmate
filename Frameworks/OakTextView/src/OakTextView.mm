@@ -696,6 +696,9 @@ static std::string shell_quote (std::vector<std::string> paths)
 		if(settings.get(kSettingsShowWrapColumnKey, false))
 			layout->set_draw_wrap_column(true);
 
+		if(settings.get(kSettingsShowIndentGuidesKey, false))
+			layout->set_draw_indent_guides(true);
+
 		BOOL hasFocus = (self.keyState & (OakViewViewIsFirstResponderMask|OakViewWindowIsKeyMask|OakViewApplicationIsActiveMask)) == (OakViewViewIsFirstResponderMask|OakViewWindowIsKeyMask|OakViewApplicationIsActiveMask);
 		layout->set_is_key(hasFocus);
 
@@ -2700,6 +2703,8 @@ static char const* kOakMenuItemTitle = "OakMenuItemTitle";
 		[aMenuItem setTitle:self.scrollPastEnd ? @"Disallow Scroll Past End" : @"Allow Scroll Past End"];
 	else if([aMenuItem action] == @selector(toggleShowWrapColumn:))
 		[aMenuItem setTitle:(layout && layout->draw_wrap_column()) ? @"Hide Wrap Column" : @"Show Wrap Column"];
+	else if([aMenuItem action] == @selector(toggleShowIndentGuides:))
+		[aMenuItem setTitle:(layout && layout->draw_indent_guides()) ? @"Hide Indent Guides" : @"Show Indent Guides"];
 	else if([aMenuItem action] == @selector(toggleContinuousSpellChecking:))
 		[aMenuItem setState:document->buffer().live_spelling() ? NSOnState : NSOffState];
 	else if([aMenuItem action] == @selector(takeSpellingLanguageFrom:))
@@ -2975,6 +2980,17 @@ static char const* kOakMenuItemTitle = "OakMenuItemTitle";
 		bool flag = !layout->draw_wrap_column();
 		layout->set_draw_wrap_column(flag);
 		settings_t::set(kSettingsShowWrapColumnKey, flag);
+	}
+}
+
+-(IBAction)toggleShowIndentGuides:(id)sender
+{
+	if(layout)
+	{
+		AUTO_REFRESH;
+		bool flag = !layout->draw_indent_guides();
+		layout->set_draw_indent_guides(flag);
+		settings_t::set(kSettingsShowIndentGuidesKey, flag);
 	}
 }
 
@@ -3562,7 +3578,7 @@ static char const* kOakMenuItemTitle = "OakMenuItemTitle";
 
 	switch(mouseDownClickCount)
 	{
-		case 2: range = ng::extend(document->buffer(), range, kSelectionExtendToWord); break;
+		case 2: range = ng::extend(document->buffer(), range, kSelectionExtendToWordOrTypingPair); break;
 		case 3: range = ng::extend(document->buffer(), range, kSelectionExtendToLine); break;
 	}
 
@@ -3717,6 +3733,34 @@ static scope::context_t add_modifiers_to_scope (scope::context_t scope, NSUInteg
 	return scope;
 }
 
+- (void)quickLookWithEvent:(NSEvent*)anEvent
+{
+	ng::index_t index = layout->index_at_point([self convertPoint:[anEvent locationInWindow] fromView:nil]);
+	ng::range_t range = ng::extend(document->buffer(), index, kSelectionExtendToWord).first();
+
+	if([self isPointInSelection:[self convertPoint:[anEvent locationInWindow] fromView:nil]] && editor->ranges().size() == 1)
+		range = editor->ranges().first();
+
+	NSRect rect = layout->rect_at_index(range.min(), false, true);
+	NSPoint pos = NSMakePoint(NSMinX(rect), NSMaxY(rect));
+
+	NSAttributedString* str = [self attributedSubstringForProposedRange:[self nsRangeForRange:range] actualRange:nullptr];
+	if(str && str.length > 0)
+		[self showDefinitionForAttributedString:str atPoint:pos];
+}
+
+- (void)pressureChangeWithEvent:(NSEvent*)anEvent
+{
+	id forceClickFlag = [[NSUserDefaults standardUserDefaults] objectForKey:@"com.apple.trackpad.forceClick"];
+	if(forceClickFlag && ![forceClickFlag boolValue])
+		return;
+
+	static NSInteger oldStage = 0;
+	if(oldStage < anEvent.stage && anEvent.stage == 2)
+		[self quickLookWithEvent:anEvent];
+	oldStage = anEvent.stage;
+}
+
 - (void)mouseDown:(NSEvent*)anEvent
 {
 	if([self.inputContext handleEvent:anEvent] || !layout || [anEvent type] != NSLeftMouseDown || ignoreMouseDown)
@@ -3724,6 +3768,7 @@ static scope::context_t add_modifiers_to_scope (scope::context_t scope, NSUInteg
 
 	if(ng::range_t r = layout->folded_range_at_point([self convertPoint:[anEvent locationInWindow] fromView:nil]))
 	{
+		AUTO_REFRESH;
 		layout->unfold(r.min().index, r.max().index);
 		return;
 	}
